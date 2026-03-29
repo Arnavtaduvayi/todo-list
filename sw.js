@@ -1,4 +1,4 @@
-const CACHE_NAME = 'weekly-todo-v2';
+const CACHE_NAME = 'weekly-todo-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -27,8 +27,14 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// Fetch: serve from cache, fall back to network, update cache
+// Fetch: only cache our own assets, let Firebase/Google requests go to network
 self.addEventListener('fetch', (e) => {
+  const url = new URL(e.request.url);
+  // Don't cache external requests (Firebase, Google auth, etc.)
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(cached => {
       const fetchPromise = fetch(e.request).then(response => {

@@ -2,13 +2,112 @@
   const DAYS = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const STORAGE_KEY = 'weekly-todo-data';
 
-  let weekOffset = 0;
-  let dragData = null; // { wk, dayIndex, todoIndex }
+  // --- Firebase ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJNMNWSNTwxpuo-3CGcaK3VOp-R7QQcLA",
+    authDomain: "todo-list-c4e6c.firebaseapp.com",
+    databaseURL: "https://todo-list-c4e6c-default-rtdb.firebaseio.com",
+    projectId: "todo-list-c4e6c",
+    storageBucket: "todo-list-c4e6c.firebasestorage.app",
+    messagingSenderId: "463191552505",
+    appId: "1:463191552505:web:820f0b9b8a733efba80d28",
+    measurementId: "G-NVE23FKTLS"
+  };
 
-  // Get the Saturday that starts the current week (Sat-Fri)
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.database();
+
+  let currentUser = null;
+  let dbRef = null;
+  let weekOffset = 0;
+  let dragData = null;
+  let allData = {};
+
+  // --- Auth UI ---
+  const authBar = document.getElementById('auth-bar');
+  const signInBtn = document.getElementById('sign-in-btn');
+
+  signInBtn.addEventListener('click', () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch(err => {
+      // Popup blocked on mobile — fall back to redirect
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+        auth.signInWithRedirect(provider);
+      }
+    });
+  });
+
+  auth.onAuthStateChanged(user => {
+    currentUser = user;
+    if (user) {
+      authBar.innerHTML = `<span class="auth-user">${user.displayName || user.email}</span><button id="sign-out-btn" class="nav-btn">Sign out</button>`;
+      document.getElementById('sign-out-btn').addEventListener('click', () => auth.signOut());
+
+      // Listen to this user's data in Firebase
+      dbRef = db.ref('users/' + user.uid);
+      dbRef.on('value', snapshot => {
+        const fbData = snapshot.val();
+        if (fbData) {
+          allData = fbData;
+          saveLocal(allData);
+        } else {
+          // First sign-in: push localStorage data up to Firebase
+          allData = loadLocal();
+          if (Object.keys(allData).length > 0) {
+            dbRef.set(allData);
+          }
+        }
+        render();
+      });
+    } else {
+      authBar.innerHTML = '<button id="sign-in-btn" class="nav-btn">Sign in with Google</button>';
+      document.getElementById('sign-in-btn').addEventListener('click', () => {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(err => {
+          if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+            auth.signInWithRedirect(provider);
+          }
+        });
+      });
+
+      if (dbRef) {
+        dbRef.off();
+        dbRef = null;
+      }
+      allData = loadLocal();
+      render();
+    }
+  });
+
+  // --- Storage ---
+  function loadLocal() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveLocal(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  function getTodos(wk, dayIndex) {
+    return (allData[wk] && allData[wk][dayIndex]) || [];
+  }
+
+  function setTodos(wk, dayIndex, todos) {
+    if (!allData[wk]) allData[wk] = {};
+    allData[wk][dayIndex] = todos;
+    saveLocal(allData);
+    if (dbRef) dbRef.set(allData);
+  }
+
+  // --- Week helpers ---
   function getWeekStart(offset = 0) {
     const now = new Date();
-    const day = now.getDay(); // 0=Sun, 6=Sat
+    const day = now.getDay();
     const diffToSat = day >= 6 ? day - 6 : day + 1;
     const saturday = new Date(now);
     saturday.setDate(now.getDate() - diffToSat + offset * 7);
@@ -29,31 +128,6 @@
     return date.getFullYear() === now.getFullYear() &&
       date.getMonth() === now.getMonth() &&
       date.getDate() === now.getDate();
-  }
-
-  // --- Storage ---
-  function loadAll() {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-    } catch {
-      return {};
-    }
-  }
-
-  function saveAll(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }
-
-  function getTodos(wk, dayIndex) {
-    const data = loadAll();
-    return (data[wk] && data[wk][dayIndex]) || [];
-  }
-
-  function setTodos(wk, dayIndex, todos) {
-    const data = loadAll();
-    if (!data[wk]) data[wk] = {};
-    data[wk][dayIndex] = todos;
-    saveAll(data);
   }
 
   // --- Drag & Drop ---
@@ -80,7 +154,6 @@
   }
 
   function handleDragLeaveList(e, listEl) {
-    // Only remove if leaving the list entirely
     if (!listEl.contains(e.relatedTarget)) {
       listEl.classList.remove('drag-over');
     }
@@ -95,18 +168,15 @@
     const item = srcTodos[dragData.todoIndex];
     if (!item) return;
 
-    // Remove from source
     srcTodos.splice(dragData.todoIndex, 1);
     setTodos(dragData.wk, dragData.dayIndex, srcTodos);
 
-    // Find drop position based on mouse Y
     const targetTodos = getTodos(wk, targetDayIndex);
     const items = listEl.querySelectorAll('.todo-item');
     let insertIdx = targetTodos.length;
     for (let j = 0; j < items.length; j++) {
       const rect = items[j].getBoundingClientRect();
       if (e.clientY < rect.top + rect.height / 2) {
-        // Map display index back to data index
         const dataIdx = parseInt(items[j].dataset.originalIdx, 10);
         insertIdx = dataIdx;
         break;
@@ -125,8 +195,7 @@
     const prevStart = new Date(currentWeekStart);
     prevStart.setDate(prevStart.getDate() - 7);
     const prevWk = weekKey(prevStart);
-    const data = loadAll();
-    const prevWeekData = data[prevWk];
+    const prevWeekData = allData[prevWk];
     if (!prevWeekData) return [];
 
     const incomplete = [];
@@ -145,10 +214,8 @@
     const incomplete = getIncompleteFromPrevWeek(currentWeekStart);
     if (incomplete.length === 0) return;
 
-    // Add all incomplete to Saturday (day 0) of new week
     const current = getTodos(wk, 0);
     incomplete.forEach(item => {
-      // Avoid duplicates by checking text
       if (!current.some(t => t.text === item.text)) {
         current.push({ text: item.text, done: false, id: Date.now() + Math.random(), carriedOver: true });
       }
@@ -188,7 +255,7 @@
       ? `<div class="progress-bar week"><div class="progress-fill" style="width:${weekPct}%"></div><span class="progress-label">${weekDone}/${weekTotal} done (${weekPct}%)</span></div>`
       : '';
 
-    // Show carry-over banner if there are incomplete tasks from last week
+    // Carry-over banner
     const incomplete = getIncompleteFromPrevWeek(weekStart);
     let banner = document.getElementById('carryover-banner');
     if (!banner) {
@@ -220,7 +287,6 @@
       const date = new Date(weekStart);
       date.setDate(weekStart.getDate() + i);
       const today = isToday(date);
-
       container.appendChild(buildDaySection(wk, i, dayName, formatDate(date), today));
     });
 
@@ -250,7 +316,6 @@
 
     const todos = getTodos(wk, dayIndex);
 
-    // Progress bar
     if (todos.length > 0) {
       const doneCount = todos.filter(t => t.done).length;
       const pct = Math.round((doneCount / todos.length) * 100);
@@ -264,13 +329,11 @@
     list.className = 'todo-list';
     list.dataset.dayIndex = dayIndex;
 
-    // Drop zone events
     list.addEventListener('dragover', handleDragOver);
     list.addEventListener('dragenter', (e) => handleDragEnterList(e, list));
     list.addEventListener('dragleave', (e) => handleDragLeaveList(e, list));
     list.addEventListener('drop', (e) => handleDrop(e, wk, dayIndex, list));
 
-    // Build display order: unchecked first, then checked
     const indexed = todos.map((todo, idx) => ({ todo, idx }));
     const unchecked = indexed.filter(e => !e.todo.done);
     const checked = indexed.filter(e => e.todo.done);
@@ -348,7 +411,6 @@
 
     section.appendChild(list);
 
-    // Add form
     const form = document.createElement('form');
     form.className = 'add-form';
     form.innerHTML = `<input type="text" placeholder="Add a task…" aria-label="New task for ${label}"><button type="submit">+</button>`;
@@ -382,6 +444,4 @@
     weekOffset = 0;
     render();
   });
-
-  render();
 })();

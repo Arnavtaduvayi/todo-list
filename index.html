@@ -13,6 +13,9 @@
 </head>
 <body>
   <div class="container">
+    <div id="auth-bar">
+      <button id="sign-in-btn" class="nav-btn">Sign in with Google</button>
+    </div>
     <header>
       <button class="nav-btn" id="prev-week">&larr;</button>
       <h1 id="week-title"></h1>
@@ -21,6 +24,10 @@
     </header>
     <div id="days-container"></div>
   </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script src="app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
