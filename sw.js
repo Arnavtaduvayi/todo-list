@@ -1,4 +1,4 @@
-const CACHE_NAME = 'weekly-todo-v1';
+const CACHE_NAME = 'weekly-todo-v2';
 const ASSETS = [
   './',
   './index.html',
