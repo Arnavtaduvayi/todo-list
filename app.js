@@ -110,6 +110,40 @@
         const span = document.createElement('span');
         span.className = 'todo-text';
         span.textContent = todo.text;
+        span.addEventListener('click', () => {
+          if (span.contentEditable === 'true') return;
+          span.contentEditable = 'true';
+          span.focus();
+          // Place cursor at end
+          const range = document.createRange();
+          range.selectNodeContents(span);
+          range.collapse(false);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+
+          const save = () => {
+            span.contentEditable = 'false';
+            const newText = span.textContent.trim();
+            if (newText && newText !== todo.text) {
+              todos[originalIdx].text = newText;
+              setTodos(wk, i, todos);
+            } else if (!newText) {
+              span.textContent = todo.text;
+            }
+          };
+
+          span.addEventListener('blur', save, { once: true });
+          span.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              span.blur();
+            } else if (e.key === 'Escape') {
+              span.textContent = todo.text;
+              span.blur();
+            }
+          });
+        });
 
         const delBtn = document.createElement('button');
         delBtn.className = 'delete-btn';

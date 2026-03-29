@@ -122,6 +122,20 @@ header h1 {
   font-size: 0.9rem;
   color: #333;
   line-height: 1.4;
+  cursor: text;
+  border-radius: 4px;
+  padding: 0.1rem 0.25rem;
+  margin: -0.1rem -0.25rem;
+  transition: background 0.15s;
+}
+
+.todo-item .todo-text:hover {
+  background: #f0f0f0;
+}
+
+.todo-item .todo-text[contenteditable="true"] {
+  background: #fff;
+  outline: 1px solid #2563eb;
 }
 
 .todo-item.completed .todo-text {
