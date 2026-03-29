@@ -91,6 +91,17 @@ header h1 {
   border-bottom-color: #60a5fa;
 }
 
+.misc-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #222;
+}
+
+.day-label.misc {
+  color: #888;
+  font-style: italic;
+}
+
 .carryover-banner {
   display: flex;
   align-items: center;
