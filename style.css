@@ -6,8 +6,8 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  background: #fafafa;
-  color: #1a1a1a;
+  background: #0a0a0a;
+  color: #e5e5e5;
   min-height: 100vh;
   padding: 2rem 1rem;
 }
@@ -29,23 +29,23 @@ header h1 {
   font-size: 1.1rem;
   font-weight: 500;
   letter-spacing: 0.02em;
-  color: #555;
+  color: #999;
 }
 
 .nav-btn {
   background: none;
-  border: 1px solid #ddd;
+  border: 1px solid #333;
   border-radius: 6px;
   padding: 0.3rem 0.7rem;
   cursor: pointer;
-  color: #888;
+  color: #777;
   font-size: 1rem;
   transition: border-color 0.2s, color 0.2s;
 }
 
 .nav-btn:hover {
-  border-color: #999;
-  color: #333;
+  border-color: #666;
+  color: #ddd;
 }
 
 #today-btn {
@@ -62,7 +62,7 @@ header h1 {
   align-items: center;
   justify-content: space-between;
   padding-bottom: 0.4rem;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid #222;
   margin-bottom: 0.5rem;
 }
 
@@ -71,24 +71,24 @@ header h1 {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #333;
+  color: #ccc;
 }
 
 .day-date {
   font-size: 0.78rem;
-  color: #999;
+  color: #666;
 }
 
 .day-label.today {
-  color: #2563eb;
+  color: #60a5fa;
 }
 
 .day-date.today {
-  color: #2563eb;
+  color: #60a5fa;
 }
 
 .day-header.today {
-  border-bottom-color: #2563eb;
+  border-bottom-color: #60a5fa;
 }
 
 .todo-list {
@@ -100,7 +100,7 @@ header h1 {
   align-items: center;
   gap: 0.6rem;
   padding: 0.45rem 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #1a1a1a;
   animation: fadeIn 0.15s ease;
 }
 
@@ -112,7 +112,7 @@ header h1 {
 .todo-item input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: #2563eb;
+  accent-color: #60a5fa;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -120,7 +120,7 @@ header h1 {
 .todo-item .todo-text {
   flex: 1;
   font-size: 0.9rem;
-  color: #333;
+  color: #e0e0e0;
   line-height: 1.4;
   cursor: text;
   border-radius: 4px;
@@ -130,23 +130,24 @@ header h1 {
 }
 
 .todo-item .todo-text:hover {
-  background: #f0f0f0;
+  background: #1a1a1a;
 }
 
 .todo-item .todo-text[contenteditable="true"] {
-  background: #fff;
-  outline: 1px solid #2563eb;
+  background: #111;
+  outline: 1px solid #60a5fa;
+  color: #fff;
 }
 
 .todo-item.completed .todo-text {
   text-decoration: line-through;
-  color: #bbb;
+  color: #555;
 }
 
 .todo-item .delete-btn {
   background: none;
   border: none;
-  color: #ccc;
+  color: #444;
   cursor: pointer;
   font-size: 1rem;
   padding: 0 0.3rem;
@@ -170,33 +171,38 @@ header h1 {
 
 .add-form input[type="text"] {
   flex: 1;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #2a2a2a;
   border-radius: 6px;
   padding: 0.4rem 0.6rem;
   font-size: 0.85rem;
   outline: none;
   transition: border-color 0.2s;
-  background: #fff;
+  background: #111;
+  color: #e0e0e0;
+}
+
+.add-form input[type="text"]::placeholder {
+  color: #555;
 }
 
 .add-form input[type="text"]:focus {
-  border-color: #2563eb;
+  border-color: #60a5fa;
 }
 
 .add-form button {
   background: none;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #2a2a2a;
   border-radius: 6px;
   padding: 0.4rem 0.7rem;
   cursor: pointer;
   font-size: 0.85rem;
-  color: #888;
+  color: #777;
   transition: border-color 0.2s, color 0.2s;
 }
 
 .add-form button:hover {
-  border-color: #2563eb;
-  color: #2563eb;
+  border-color: #60a5fa;
+  color: #60a5fa;
 }
 
 @media (max-width: 500px) {
