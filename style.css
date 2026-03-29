@@ -132,15 +132,34 @@ header h1 {
 
 .todo-list {
   list-style: none;
+  min-height: 8px;
+  transition: background 0.15s;
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.todo-list.drag-over {
+  background: #1a1f2e;
+  outline: 1px dashed #60a5fa40;
 }
 
 .todo-item {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.45rem 0;
+  padding: 0.45rem 0.3rem;
   border-bottom: 1px solid #1a1a1a;
   animation: fadeIn 0.15s ease;
+  cursor: grab;
+  border-radius: 4px;
+}
+
+.todo-item:active {
+  cursor: grabbing;
+}
+
+.todo-item.dragging {
+  opacity: 0.3;
 }
 
 @keyframes fadeIn {

@@ -3,12 +3,13 @@
   const STORAGE_KEY = 'weekly-todo-data';
 
   let weekOffset = 0;
+  let dragData = null; // { wk, dayIndex, todoIndex }
 
   // Get the Saturday that starts the current week (Sat-Fri)
   function getWeekStart(offset = 0) {
     const now = new Date();
     const day = now.getDay(); // 0=Sun, 6=Sat
-    const diffToSat = day >= 6 ? day - 6 : day + 1; // days since last Saturday
+    const diffToSat = day >= 6 ? day - 6 : day + 1;
     const saturday = new Date(now);
     saturday.setDate(now.getDate() - diffToSat + offset * 7);
     saturday.setHours(0, 0, 0, 0);
@@ -53,6 +54,70 @@
     if (!data[wk]) data[wk] = {};
     data[wk][dayIndex] = todos;
     saveAll(data);
+  }
+
+  // --- Drag & Drop ---
+  function handleDragStart(e, wk, dayIndex, originalIdx) {
+    dragData = { wk, dayIndex, todoIndex: originalIdx };
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.classList.add('dragging');
+  }
+
+  function handleDragEnd(e) {
+    e.target.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    dragData = null;
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }
+
+  function handleDragEnterList(e, listEl) {
+    e.preventDefault();
+    listEl.classList.add('drag-over');
+  }
+
+  function handleDragLeaveList(e, listEl) {
+    // Only remove if leaving the list entirely
+    if (!listEl.contains(e.relatedTarget)) {
+      listEl.classList.remove('drag-over');
+    }
+  }
+
+  function handleDrop(e, wk, targetDayIndex, listEl) {
+    e.preventDefault();
+    listEl.classList.remove('drag-over');
+    if (!dragData) return;
+
+    const srcTodos = getTodos(dragData.wk, dragData.dayIndex);
+    const item = srcTodos[dragData.todoIndex];
+    if (!item) return;
+
+    // Remove from source
+    srcTodos.splice(dragData.todoIndex, 1);
+    setTodos(dragData.wk, dragData.dayIndex, srcTodos);
+
+    // Find drop position based on mouse Y
+    const targetTodos = getTodos(wk, targetDayIndex);
+    const items = listEl.querySelectorAll('.todo-item');
+    let insertIdx = targetTodos.length;
+    for (let j = 0; j < items.length; j++) {
+      const rect = items[j].getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) {
+        // Map display index back to data index
+        const dataIdx = parseInt(items[j].dataset.originalIdx, 10);
+        insertIdx = dataIdx;
+        break;
+      }
+    }
+
+    targetTodos.splice(insertIdx, 0, item);
+    setTodos(wk, targetDayIndex, targetTodos);
+
+    dragData = null;
+    render();
   }
 
   // --- Render ---
@@ -117,7 +182,15 @@
 
       const list = document.createElement('ul');
       list.className = 'todo-list';
-      // Build display order: unchecked first, then checked, stable within each group
+      list.dataset.dayIndex = i;
+
+      // Drop zone events
+      list.addEventListener('dragover', handleDragOver);
+      list.addEventListener('dragenter', (e) => handleDragEnterList(e, list));
+      list.addEventListener('dragleave', (e) => handleDragLeaveList(e, list));
+      list.addEventListener('drop', (e) => handleDrop(e, wk, i, list));
+
+      // Build display order: unchecked first, then checked
       const indexed = todos.map((todo, idx) => ({ todo, idx }));
       const unchecked = indexed.filter(e => !e.todo.done);
       const checked = indexed.filter(e => e.todo.done);
@@ -126,6 +199,11 @@
       displayOrder.forEach(({ todo, idx: originalIdx }) => {
         const li = document.createElement('li');
         li.className = 'todo-item' + (todo.done ? ' completed' : '');
+        li.draggable = true;
+        li.dataset.originalIdx = originalIdx;
+
+        li.addEventListener('dragstart', (e) => handleDragStart(e, wk, i, originalIdx));
+        li.addEventListener('dragend', handleDragEnd);
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
@@ -143,7 +221,6 @@
           if (span.contentEditable === 'true') return;
           span.contentEditable = 'true';
           span.focus();
-          // Place cursor at end
           const range = document.createRange();
           range.selectNodeContents(span);
           range.collapse(false);
