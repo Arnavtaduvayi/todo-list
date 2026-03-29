@@ -169,6 +169,25 @@
     const container = document.getElementById('days-container');
     container.innerHTML = '';
 
+    // Weekly progress (including misc)
+    let weekTotal = 0, weekDone = 0;
+    [...DAYS.map((_, idx) => idx), 'misc'].forEach(idx => {
+      const t = getTodos(wk, idx);
+      weekTotal += t.length;
+      weekDone += t.filter(x => x.done).length;
+    });
+    const weekPct = weekTotal > 0 ? Math.round((weekDone / weekTotal) * 100) : 0;
+    let weekProgressEl = document.getElementById('week-progress');
+    if (!weekProgressEl) {
+      weekProgressEl = document.createElement('div');
+      weekProgressEl.id = 'week-progress';
+      weekProgressEl.className = 'week-progress';
+      document.querySelector('header').after(weekProgressEl);
+    }
+    weekProgressEl.innerHTML = weekTotal > 0
+      ? `<div class="progress-bar week"><div class="progress-fill" style="width:${weekPct}%"></div><span class="progress-label">${weekDone}/${weekTotal} done (${weekPct}%)</span></div>`
+      : '';
+
     // Show carry-over banner if there are incomplete tasks from last week
     const incomplete = getIncompleteFromPrevWeek(weekStart);
     let banner = document.getElementById('carryover-banner');
@@ -177,18 +196,12 @@
       banner.id = 'carryover-banner';
       banner.className = 'carryover-banner';
     }
-    const weekProgress = document.getElementById('week-progress');
     if (incomplete.length > 0) {
-      // Check if already carried over
       const satTodos = getTodos(wk, 0);
       const alreadyCarried = incomplete.every(item => satTodos.some(t => t.text === item.text));
       if (!alreadyCarried) {
         banner.innerHTML = `<span>${incomplete.length} incomplete task${incomplete.length > 1 ? 's' : ''} from last week</span><button id="carryover-btn">Carry over</button><button id="carryover-dismiss">Dismiss</button>`;
-        if (weekProgress) {
-          weekProgress.after(banner);
-        } else {
-          document.querySelector('header').after(banner);
-        }
+        weekProgressEl.after(banner);
         document.getElementById('carryover-btn').onclick = () => {
           carryOver(wk, weekStart);
           render();
@@ -202,25 +215,6 @@
     } else {
       banner.remove();
     }
-
-    // Weekly progress (including misc)
-    let weekTotal = 0, weekDone = 0;
-    [...DAYS.map((_, idx) => idx), 'misc'].forEach(idx => {
-      const t = getTodos(wk, idx);
-      weekTotal += t.length;
-      weekDone += t.filter(x => x.done).length;
-    });
-    const weekPct = weekTotal > 0 ? Math.round((weekDone / weekTotal) * 100) : 0;
-    let weekProgress = document.getElementById('week-progress');
-    if (!weekProgress) {
-      weekProgress = document.createElement('div');
-      weekProgress.id = 'week-progress';
-      weekProgress.className = 'week-progress';
-      document.querySelector('header').after(weekProgress);
-    }
-    weekProgress.innerHTML = weekTotal > 0
-      ? `<div class="progress-bar week"><div class="progress-fill" style="width:${weekPct}%"></div><span class="progress-label">${weekDone}/${weekTotal} done (${weekPct}%)</span></div>`
-      : '';
 
     DAYS.forEach((dayName, i) => {
       const date = new Date(weekStart);
