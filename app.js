@@ -120,6 +120,42 @@
     render();
   }
 
+  // --- Carry-over ---
+  function getIncompleteFromPrevWeek(currentWeekStart) {
+    const prevStart = new Date(currentWeekStart);
+    prevStart.setDate(prevStart.getDate() - 7);
+    const prevWk = weekKey(prevStart);
+    const data = loadAll();
+    const prevWeekData = data[prevWk];
+    if (!prevWeekData) return [];
+
+    const incomplete = [];
+    DAYS.forEach((dayName, i) => {
+      const todos = prevWeekData[i] || [];
+      todos.forEach(todo => {
+        if (!todo.done) {
+          incomplete.push({ ...todo, fromDay: dayName });
+        }
+      });
+    });
+    return incomplete;
+  }
+
+  function carryOver(wk, currentWeekStart) {
+    const incomplete = getIncompleteFromPrevWeek(currentWeekStart);
+    if (incomplete.length === 0) return;
+
+    // Add all incomplete to Saturday (day 0) of new week
+    const current = getTodos(wk, 0);
+    incomplete.forEach(item => {
+      // Avoid duplicates by checking text
+      if (!current.some(t => t.text === item.text)) {
+        current.push({ text: item.text, done: false, id: Date.now() + Math.random(), carriedOver: true });
+      }
+    });
+    setTodos(wk, 0, current);
+  }
+
   // --- Render ---
   function render() {
     const weekStart = getWeekStart(weekOffset);
@@ -132,6 +168,40 @@
 
     const container = document.getElementById('days-container');
     container.innerHTML = '';
+
+    // Show carry-over banner if there are incomplete tasks from last week
+    const incomplete = getIncompleteFromPrevWeek(weekStart);
+    let banner = document.getElementById('carryover-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'carryover-banner';
+      banner.className = 'carryover-banner';
+    }
+    const weekProgress = document.getElementById('week-progress');
+    if (incomplete.length > 0) {
+      // Check if already carried over
+      const satTodos = getTodos(wk, 0);
+      const alreadyCarried = incomplete.every(item => satTodos.some(t => t.text === item.text));
+      if (!alreadyCarried) {
+        banner.innerHTML = `<span>${incomplete.length} incomplete task${incomplete.length > 1 ? 's' : ''} from last week</span><button id="carryover-btn">Carry over</button><button id="carryover-dismiss">Dismiss</button>`;
+        if (weekProgress) {
+          weekProgress.after(banner);
+        } else {
+          document.querySelector('header').after(banner);
+        }
+        document.getElementById('carryover-btn').onclick = () => {
+          carryOver(wk, weekStart);
+          render();
+        };
+        document.getElementById('carryover-dismiss').onclick = () => {
+          banner.remove();
+        };
+      } else {
+        banner.remove();
+      }
+    } else {
+      banner.remove();
+    }
 
     // Weekly progress
     let weekTotal = 0, weekDone = 0;
