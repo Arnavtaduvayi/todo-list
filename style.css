@@ -193,4 +193,14 @@ header h1 {
   header h1 {
     font-size: 0.95rem;
   }
+
+  .todo-item .delete-btn {
+    opacity: 0.4;
+  }
+}
+
+@media (hover: none) {
+  .todo-item .delete-btn {
+    opacity: 0.4;
+  }
 }
