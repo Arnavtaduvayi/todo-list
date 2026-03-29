@@ -68,6 +68,25 @@
     const container = document.getElementById('days-container');
     container.innerHTML = '';
 
+    // Weekly progress
+    let weekTotal = 0, weekDone = 0;
+    DAYS.forEach((_, idx) => {
+      const t = getTodos(wk, idx);
+      weekTotal += t.length;
+      weekDone += t.filter(x => x.done).length;
+    });
+    const weekPct = weekTotal > 0 ? Math.round((weekDone / weekTotal) * 100) : 0;
+    let weekProgress = document.getElementById('week-progress');
+    if (!weekProgress) {
+      weekProgress = document.createElement('div');
+      weekProgress.id = 'week-progress';
+      weekProgress.className = 'week-progress';
+      document.querySelector('header').after(weekProgress);
+    }
+    weekProgress.innerHTML = weekTotal > 0
+      ? `<div class="progress-bar week"><div class="progress-fill" style="width:${weekPct}%"></div><span class="progress-label">${weekDone}/${weekTotal} done (${weekPct}%)</span></div>`
+      : '';
+
     DAYS.forEach((dayName, i) => {
       const date = new Date(weekStart);
       date.setDate(weekStart.getDate() + i);
@@ -84,10 +103,20 @@
       `;
       section.appendChild(header);
 
+      const todos = getTodos(wk, i);
+
+      // Progress bar
+      if (todos.length > 0) {
+        const doneCount = todos.filter(t => t.done).length;
+        const pct = Math.round((doneCount / todos.length) * 100);
+        const progressWrap = document.createElement('div');
+        progressWrap.className = 'progress-bar';
+        progressWrap.innerHTML = `<div class="progress-fill" style="width:${pct}%"></div><span class="progress-label">${doneCount}/${todos.length}</span>`;
+        section.appendChild(progressWrap);
+      }
+
       const list = document.createElement('ul');
       list.className = 'todo-list';
-
-      const todos = getTodos(wk, i);
       // Build display order: unchecked first, then checked, stable within each group
       const indexed = todos.map((todo, idx) => ({ todo, idx }));
       const unchecked = indexed.filter(e => !e.todo.done);
