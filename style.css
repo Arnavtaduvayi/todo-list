@@ -48,6 +48,11 @@ header h1 {
   color: #333;
 }
 
+#today-btn {
+  font-size: 0.78rem;
+  padding: 0.3rem 0.6rem;
+}
+
 .day-section {
   margin-bottom: 1.5rem;
 }

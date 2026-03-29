@@ -88,11 +88,13 @@
       list.className = 'todo-list';
 
       const todos = getTodos(wk, i);
-      // Sort: unchecked first, checked at bottom, preserve relative order
-      const sorted = [...todos].sort((a, b) => a.done - b.done);
+      // Build display order: unchecked first, then checked, stable within each group
+      const indexed = todos.map((todo, idx) => ({ todo, idx }));
+      const unchecked = indexed.filter(e => !e.todo.done);
+      const checked = indexed.filter(e => e.todo.done);
+      const displayOrder = [...unchecked, ...checked];
 
-      sorted.forEach((todo, todoIdx) => {
-        const originalIdx = todos.indexOf(todo);
+      displayOrder.forEach(({ todo, idx: originalIdx }) => {
         const li = document.createElement('li');
         li.className = 'todo-item' + (todo.done ? ' completed' : '');
 
@@ -136,7 +138,7 @@
         const text = input.value.trim();
         if (!text) return;
         const current = getTodos(wk, i);
-        current.push({ text, done: false });
+        current.push({ text, done: false, id: Date.now() });
         setTodos(wk, i, current);
         render();
       });
@@ -144,6 +146,14 @@
 
       container.appendChild(section);
     });
+
+    // Scroll today's section into view on current week
+    if (weekOffset === 0) {
+      const todaySection = container.querySelector('.day-header.today');
+      if (todaySection) {
+        todaySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
   }
 
   // --- Navigation ---
@@ -154,6 +164,11 @@
 
   document.getElementById('next-week').addEventListener('click', () => {
     weekOffset++;
+    render();
+  });
+
+  document.getElementById('today-btn').addEventListener('click', () => {
+    weekOffset = 0;
     render();
   });
 
