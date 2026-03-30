@@ -164,27 +164,67 @@
     listEl.classList.remove('drag-over');
     if (!dragData) return;
 
-    const srcTodos = getTodos(dragData.wk, dragData.dayIndex);
-    const item = srcTodos[dragData.todoIndex];
-    if (!item) return;
+    const sameDayDrag = dragData.wk === wk && dragData.dayIndex === targetDayIndex;
 
-    srcTodos.splice(dragData.todoIndex, 1);
-    setTodos(dragData.wk, dragData.dayIndex, srcTodos);
-
-    const targetTodos = getTodos(wk, targetDayIndex);
-    const items = listEl.querySelectorAll('.todo-item');
-    let insertIdx = targetTodos.length;
-    for (let j = 0; j < items.length; j++) {
-      const rect = items[j].getBoundingClientRect();
+    // Build the display-order index map from the DOM before any mutations
+    const domItems = listEl.querySelectorAll('.todo-item');
+    let dropDisplayIdx = domItems.length; // default: end of list
+    for (let j = 0; j < domItems.length; j++) {
+      const rect = domItems[j].getBoundingClientRect();
       if (e.clientY < rect.top + rect.height / 2) {
-        const dataIdx = parseInt(items[j].dataset.originalIdx, 10);
-        insertIdx = dataIdx;
+        dropDisplayIdx = j;
         break;
       }
     }
 
-    targetTodos.splice(insertIdx, 0, item);
-    setTodos(wk, targetDayIndex, targetTodos);
+    if (sameDayDrag) {
+      // Same-day reorder: work in display-order space
+      const todos = getTodos(wk, targetDayIndex);
+      const indexed = todos.map((todo, idx) => ({ todo, idx }));
+      const unchecked = indexed.filter(e => !e.todo.done);
+      const checked = indexed.filter(e => e.todo.done);
+      const displayOrder = [...unchecked, ...checked];
+
+      // Find where the dragged item is in display order
+      const dragDisplayIdx = displayOrder.findIndex(e => e.idx === dragData.todoIndex);
+      if (dragDisplayIdx === -1) return;
+
+      // Remove from display order
+      const [moved] = displayOrder.splice(dragDisplayIdx, 1);
+
+      // Adjust drop index if dragging downward
+      const adjustedDrop = dropDisplayIdx > dragDisplayIdx ? dropDisplayIdx - 1 : dropDisplayIdx;
+
+      // Insert at new display position
+      displayOrder.splice(adjustedDrop, 0, moved);
+
+      // Rebuild the data array in new display order
+      const reordered = displayOrder.map(e => e.todo);
+      setTodos(wk, targetDayIndex, reordered);
+    } else {
+      // Cross-day move
+      const srcTodos = getTodos(dragData.wk, dragData.dayIndex);
+      const item = srcTodos[dragData.todoIndex];
+      if (!item) return;
+
+      srcTodos.splice(dragData.todoIndex, 1);
+      setTodos(dragData.wk, dragData.dayIndex, srcTodos);
+
+      const targetTodos = getTodos(wk, targetDayIndex);
+      // Map display drop position to data position
+      const targetIndexed = targetTodos.map((todo, idx) => ({ todo, idx }));
+      const targetUnchecked = targetIndexed.filter(e => !e.todo.done);
+      const targetChecked = targetIndexed.filter(e => e.todo.done);
+      const targetDisplay = [...targetUnchecked, ...targetChecked];
+
+      let insertIdx = targetTodos.length;
+      if (dropDisplayIdx < targetDisplay.length) {
+        insertIdx = targetDisplay[dropDisplayIdx].idx;
+      }
+
+      targetTodos.splice(insertIdx, 0, item);
+      setTodos(wk, targetDayIndex, targetTodos);
+    }
 
     dragData = null;
     render();
