@@ -199,7 +199,7 @@ header h1 {
 
 .todo-list {
   list-style: none;
-  min-height: 8px;
+  min-height: 2.5rem;
   transition: background 0.15s;
   border-radius: 4px;
   padding: 2px;
