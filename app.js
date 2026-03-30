@@ -130,7 +130,184 @@
       date.getDate() === now.getDate();
   }
 
-  // --- Drag & Drop ---
+  // --- Touch Drag & Drop ---
+  let touchDrag = null; // { el, ghost, wk, dayIndex, todoIndex, startY, started }
+  let touchHoldTimer = null;
+
+  function touchStart(e, wk, dayIndex, originalIdx, li) {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    // Track start position for move threshold
+    touchDrag = { el: li, startY: touch.clientY, started: false };
+    // Start a hold timer — 300ms to initiate drag
+    touchHoldTimer = setTimeout(() => {
+      touchDrag = {
+        el: li,
+        wk,
+        dayIndex,
+        todoIndex: originalIdx,
+        startY: touch.clientY,
+        offsetX: touch.clientX,
+        started: true
+      };
+      li.classList.add('dragging');
+      // Haptic feedback on supported devices
+      if (navigator.vibrate) navigator.vibrate(30);
+
+      // Create ghost element
+      const ghost = li.cloneNode(true);
+      ghost.className = 'todo-item drag-ghost';
+      ghost.style.position = 'fixed';
+      ghost.style.left = '0';
+      ghost.style.right = '0';
+      ghost.style.top = touch.clientY - 20 + 'px';
+      ghost.style.zIndex = '1000';
+      ghost.style.pointerEvents = 'none';
+      document.body.appendChild(ghost);
+      touchDrag.ghost = ghost;
+    }, 300);
+  }
+
+  function touchMove(e) {
+    if (!touchDrag || !touchDrag.started) {
+      // Cancel hold if finger moves significantly before timer fires
+      if (touchHoldTimer && e.touches.length > 0) {
+        const touch = e.touches[0];
+        const dy = Math.abs(touch.clientY - (touchDrag ? touchDrag.startY : touch.clientY));
+        if (dy > 10) {
+          clearTimeout(touchHoldTimer);
+          touchHoldTimer = null;
+          touchDrag = null;
+        }
+      }
+      if (!touchDrag || !touchDrag.started) return;
+    }
+    if (!touchDrag.started) return;
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    if (touchDrag.ghost) {
+      touchDrag.ghost.style.top = touch.clientY - 20 + 'px';
+    }
+
+    // Highlight the list being hovered over — hide ghost first
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    if (touchDrag.ghost) touchDrag.ghost.style.display = 'none';
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (touchDrag.ghost) touchDrag.ghost.style.display = '';
+    if (target) {
+      const list = target.closest('.todo-list');
+      if (list) list.classList.add('drag-over');
+    }
+  }
+
+  function touchEnd(e) {
+    if (touchHoldTimer) {
+      clearTimeout(touchHoldTimer);
+      touchHoldTimer = null;
+    }
+    if (!touchDrag || !touchDrag.started) {
+      touchDrag = null;
+      return;
+    }
+
+    const touch = e.changedTouches[0];
+    const clientY = touch.clientY;
+
+    // Hide ghost BEFORE elementFromPoint so it doesn't block detection
+    if (touchDrag.ghost) touchDrag.ghost.style.display = 'none';
+
+    // Find which list we dropped on
+    const dropTarget = document.elementFromPoint(touch.clientX, clientY);
+
+    // Now clean up ghost and styles
+    if (touchDrag.ghost) touchDrag.ghost.remove();
+    touchDrag.el.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+
+    if (!dropTarget) { touchDrag = null; return; }
+
+    const targetList = dropTarget.closest('.todo-list');
+    if (!targetList) { touchDrag = null; return; }
+
+    const targetDayIndex = targetList.dataset.dayIndex;
+    // Convert to number if it's a day index (not 'misc')
+    const parsedDayIndex = targetDayIndex === 'misc' ? 'misc' : parseInt(targetDayIndex, 10);
+
+    // Determine current week key
+    const weekStart = getWeekStart(weekOffset);
+    const wk = weekKey(weekStart);
+
+    // Find drop position
+    const domItems = targetList.querySelectorAll('.todo-item');
+    let dropDisplayIdx = domItems.length;
+    for (let j = 0; j < domItems.length; j++) {
+      const rect = domItems[j].getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) {
+        dropDisplayIdx = j;
+        break;
+      }
+    }
+
+    const sameDayDrag = touchDrag.wk === wk && touchDrag.dayIndex === parsedDayIndex;
+
+    if (sameDayDrag) {
+      const todos = getTodos(wk, parsedDayIndex);
+      const indexed = todos.map((todo, idx) => ({ todo, idx }));
+      const unchecked = indexed.filter(x => !x.todo.done);
+      const checked = indexed.filter(x => x.todo.done);
+      const displayOrder = [...unchecked, ...checked];
+
+      const dragDisplayIdx = displayOrder.findIndex(x => x.idx === touchDrag.todoIndex);
+      if (dragDisplayIdx === -1) { touchDrag = null; return; }
+
+      const [moved] = displayOrder.splice(dragDisplayIdx, 1);
+      const adjustedDrop = dropDisplayIdx > dragDisplayIdx ? dropDisplayIdx - 1 : dropDisplayIdx;
+      displayOrder.splice(adjustedDrop, 0, moved);
+
+      const reordered = displayOrder.map(x => x.todo);
+      setTodos(wk, parsedDayIndex, reordered);
+    } else {
+      const srcTodos = getTodos(touchDrag.wk, touchDrag.dayIndex);
+      const item = srcTodos[touchDrag.todoIndex];
+      if (!item) { touchDrag = null; return; }
+
+      srcTodos.splice(touchDrag.todoIndex, 1);
+      setTodos(touchDrag.wk, touchDrag.dayIndex, srcTodos);
+
+      const targetTodos = getTodos(wk, parsedDayIndex);
+      const targetIndexed = targetTodos.map((todo, idx) => ({ todo, idx }));
+      const targetUnchecked = targetIndexed.filter(x => !x.todo.done);
+      const targetChecked = targetIndexed.filter(x => x.todo.done);
+      const targetDisplay = [...targetUnchecked, ...targetChecked];
+
+      let insertIdx = targetTodos.length;
+      if (dropDisplayIdx < targetDisplay.length) {
+        insertIdx = targetDisplay[dropDisplayIdx].idx;
+      }
+
+      targetTodos.splice(insertIdx, 0, item);
+      setTodos(wk, parsedDayIndex, targetTodos);
+    }
+
+    touchDrag = null;
+    render();
+  }
+
+  // Must be non-passive to allow preventDefault (stops page scrolling while dragging)
+  document.addEventListener('touchmove', touchMove, { passive: false });
+  document.addEventListener('touchend', touchEnd);
+  document.addEventListener('touchcancel', () => {
+    if (touchHoldTimer) { clearTimeout(touchHoldTimer); touchHoldTimer = null; }
+    if (touchDrag) {
+      if (touchDrag.ghost) touchDrag.ghost.remove();
+      if (touchDrag.el) touchDrag.el.classList.remove('dragging');
+      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      touchDrag = null;
+    }
+  });
+
+  // --- Desktop Drag & Drop ---
   function handleDragStart(e, wk, dayIndex, originalIdx) {
     dragData = { wk, dayIndex, todoIndex: originalIdx };
     e.dataTransfer.effectAllowed = 'move';
@@ -387,6 +564,7 @@
 
       li.addEventListener('dragstart', (e) => handleDragStart(e, wk, dayIndex, originalIdx));
       li.addEventListener('dragend', handleDragEnd);
+      li.addEventListener('touchstart', (e) => touchStart(e, wk, dayIndex, originalIdx, li), { passive: true });
 
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
