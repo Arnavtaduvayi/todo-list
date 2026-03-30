@@ -24,6 +24,31 @@
   let dragData = null;
   let allData = {};
 
+  // --- Theme ---
+  const THEME_KEY = 'weekly-todo-theme';
+  const themeBtn = document.getElementById('theme-btn');
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    themeBtn.textContent = theme === 'cute' ? 'Dark mode' : 'Cute mode';
+    localStorage.setItem(THEME_KEY, theme);
+    // Update meta theme-color for PWA
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = theme === 'cute' ? '#fff0f5' : '#0a0a0a';
+  }
+
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = current === 'cute' ? 'dark' : 'cute';
+    applyTheme(next);
+    // Sync to Firebase
+    if (dbRef) dbRef.child('_settings/theme').set(next);
+  }
+
+  // Load saved theme immediately (before Firebase)
+  applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+  themeBtn.addEventListener('click', toggleTheme);
+
   // --- Auth UI ---
   const authBar = document.getElementById('auth-bar');
   const signInBtn = document.getElementById('sign-in-btn');
@@ -49,6 +74,10 @@
       dbRef.on('value', snapshot => {
         const fbData = snapshot.val();
         if (fbData) {
+          // Apply synced theme from other devices
+          if (fbData._settings && fbData._settings.theme) {
+            applyTheme(fbData._settings.theme);
+          }
           allData = fbData;
           saveLocal(allData);
         } else {
@@ -57,6 +86,9 @@
           if (Object.keys(allData).length > 0) {
             dbRef.set(allData);
           }
+          // Push current theme to Firebase
+          const currentTheme = localStorage.getItem(THEME_KEY) || 'dark';
+          dbRef.child('_settings/theme').set(currentTheme);
         }
         render();
       });
