@@ -406,6 +406,26 @@
     list.addEventListener('dragleave', (e) => handleDragLeaveList(e, list));
     list.addEventListener('drop', (e) => handleDrop(e, wk, dayIndex, list));
 
+    // Allow dropping on the entire day section (helps with empty days)
+    section.addEventListener('dragover', handleDragOver);
+    section.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      if (!section.contains(e.relatedTarget) || e.relatedTarget === null) {
+        list.classList.add('drag-over');
+      }
+    });
+    section.addEventListener('dragleave', (e) => {
+      if (!section.contains(e.relatedTarget)) {
+        list.classList.remove('drag-over');
+      }
+    });
+    section.addEventListener('drop', (e) => {
+      // Only handle if not already caught by the list itself
+      if (!e.defaultPrevented) {
+        handleDrop(e, wk, dayIndex, list);
+      }
+    });
+
     const indexed = todos.map((todo, idx) => ({ todo, idx }));
     const unchecked = indexed.filter(e => !e.todo.done);
     const checked = indexed.filter(e => e.todo.done);
