@@ -23,6 +23,7 @@
   let weekOffset = 0;
   let dragData = null;
   let allData = {};
+  let initialScrollDone = false;
 
   // --- Auth UI ---
   const authBar = document.getElementById('auth-bar');
@@ -293,11 +294,12 @@
     // Misc section
     container.appendChild(buildDaySection(wk, 'misc', 'Misc', '', false));
 
-    // Scroll today's section into view on current week
-    if (weekOffset === 0) {
+    // Scroll today's section into view only on initial load
+    if (weekOffset === 0 && !initialScrollDone) {
       const todaySection = container.querySelector('.day-header.today');
       if (todaySection) {
         todaySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        initialScrollDone = true;
       }
     }
   }
