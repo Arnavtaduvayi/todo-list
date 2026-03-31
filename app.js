@@ -26,28 +26,26 @@
 
   // --- Theme ---
   const THEME_KEY = 'weekly-todo-theme';
-  const themeBtn = document.getElementById('theme-btn');
+  const themeSelect = document.getElementById('theme-select');
+  const THEME_COLORS = {
+    dark: '#0a0a0a', cute: '#fff0f5', ocean: '#0b1520',
+    forest: '#0a1510', lavender: '#f5f0ff', sunset: '#1a0e0a'
+  };
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
-    themeBtn.textContent = theme === 'cute' ? 'Dark mode' : 'Cute mode';
+    themeSelect.value = theme;
     localStorage.setItem(THEME_KEY, theme);
-    // Update meta theme-color for PWA
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = theme === 'cute' ? '#fff0f5' : '#0a0a0a';
-  }
-
-  function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme') || 'dark';
-    const next = current === 'cute' ? 'dark' : 'cute';
-    applyTheme(next);
-    // Sync to Firebase
-    if (dbRef) dbRef.child('_settings/theme').set(next);
+    if (meta) meta.content = THEME_COLORS[theme] || '#0a0a0a';
   }
 
   // Load saved theme immediately (before Firebase)
   applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
-  themeBtn.addEventListener('click', toggleTheme);
+  themeSelect.addEventListener('change', () => {
+    applyTheme(themeSelect.value);
+    if (dbRef) dbRef.child('_settings/theme').set(themeSelect.value);
+  });
 
   // --- Auth UI ---
   const authBar = document.getElementById('auth-bar');

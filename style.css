@@ -52,6 +52,102 @@
   --carryover-border: #f5c0d5;
 }
 
+:root[data-theme="ocean"] {
+  --bg: #0b1520;
+  --text: #c8dce8;
+  --text-muted: #6a8fa8;
+  --text-dim: #4a7080;
+  --text-faint: #3a5a6a;
+  --text-bright: #9abac8;
+  --accent: #22d3ee;
+  --border: #1a2e3e;
+  --border-light: #254050;
+  --border-input: #1e3545;
+  --surface: #0e1a28;
+  --surface-hover: #142535;
+  --surface-drag: #0e2030;
+  --surface-ghost: #0e2030;
+  --delete-hover: #f87171;
+  --progress-bg: #122030;
+  --todo-text: #b8d0e0;
+  --todo-done: #3a5a6a;
+  --btn-text: #5a8898;
+  --carryover-bg: #0e2030;
+  --carryover-border: #1a3848;
+}
+
+:root[data-theme="forest"] {
+  --bg: #0a1510;
+  --text: #c8e0d0;
+  --text-muted: #6a9a78;
+  --text-dim: #4a7858;
+  --text-faint: #3a6048;
+  --text-bright: #90b898;
+  --accent: #4ade80;
+  --border: #1a2e20;
+  --border-light: #254530;
+  --border-input: #1e3828;
+  --surface: #0e1a12;
+  --surface-hover: #142818;
+  --surface-drag: #0e2818;
+  --surface-ghost: #0e2818;
+  --delete-hover: #f87171;
+  --progress-bg: #122818;
+  --todo-text: #b0d0b8;
+  --todo-done: #3a6048;
+  --btn-text: #5a8868;
+  --carryover-bg: #0e2818;
+  --carryover-border: #1a3828;
+}
+
+:root[data-theme="lavender"] {
+  --bg: #f5f0ff;
+  --text: #3a3050;
+  --text-muted: #8070a0;
+  --text-dim: #a090c0;
+  --text-faint: #b8a8d0;
+  --text-bright: #5a4878;
+  --accent: #a78bfa;
+  --border: #e0d5f0;
+  --border-light: #d0c0e8;
+  --border-input: #d8c8f0;
+  --surface: #faf5ff;
+  --surface-hover: #f0e8ff;
+  --surface-drag: #ece0ff;
+  --surface-ghost: #ece0ff;
+  --delete-hover: #e5556a;
+  --progress-bg: #ece0ff;
+  --todo-text: #3a3050;
+  --todo-done: #b8a8d0;
+  --btn-text: #8070a0;
+  --carryover-bg: #ece0ff;
+  --carryover-border: #d0c0e8;
+}
+
+:root[data-theme="sunset"] {
+  --bg: #1a0e0a;
+  --text: #e8d0c0;
+  --text-muted: #a07858;
+  --text-dim: #806040;
+  --text-faint: #685038;
+  --text-bright: #c8a080;
+  --accent: #fb923c;
+  --border: #2e1a10;
+  --border-light: #3e2818;
+  --border-input: #352015;
+  --surface: #1e120e;
+  --surface-hover: #281a12;
+  --surface-drag: #2e1810;
+  --surface-ghost: #2e1810;
+  --delete-hover: #f87171;
+  --progress-bg: #251810;
+  --todo-text: #d8c0a8;
+  --todo-done: #685038;
+  --btn-text: #907050;
+  --carryover-bg: #2e1810;
+  --carryover-border: #3e2818;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   background: var(--bg);
@@ -378,9 +474,20 @@ header h1 {
   color: var(--accent);
 }
 
-#theme-btn {
+#theme-select {
   font-size: 0.78rem;
-  padding: 0.3rem 0.6rem;
+  padding: 0.25rem 0.4rem;
+  background: var(--surface);
+  color: var(--btn-text);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+#theme-select:hover {
+  border-color: var(--text-dim);
+  color: var(--text);
 }
 
 @media (max-width: 500px) {
