@@ -23,6 +23,7 @@
   let weekOffset = 0;
   let dragData = null;
   let allData = {};
+  let initialScrollDone = false;
 
   // --- Theme ---
   const THEME_KEY = 'weekly-todo-theme';
@@ -363,11 +364,12 @@
     // Misc section
     container.appendChild(buildDaySection(wk, 'misc', 'Misc', '', false));
 
-    // Scroll today's section into view on current week
-    if (weekOffset === 0) {
+    // Scroll today's section into view only on initial load
+    if (weekOffset === 0 && !initialScrollDone) {
       const todaySection = container.querySelector('.day-header.today');
       if (todaySection) {
         todaySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        initialScrollDone = true;
       }
     }
   }
@@ -444,7 +446,8 @@
       checkbox.addEventListener('change', () => {
         todos[originalIdx].done = checkbox.checked;
         setTodos(wk, dayIndex, todos);
-        render();
+        li.classList.add('completing');
+        setTimeout(render, 250);
       });
 
       const span = document.createElement('span');
@@ -488,9 +491,12 @@
       delBtn.className = 'delete-btn';
       delBtn.textContent = '×';
       delBtn.addEventListener('click', () => {
-        todos.splice(originalIdx, 1);
-        setTodos(wk, dayIndex, todos);
-        render();
+        li.classList.add('deleting');
+        setTimeout(() => {
+          todos.splice(originalIdx, 1);
+          setTodos(wk, dayIndex, todos);
+          render();
+        }, 250);
       });
 
       li.appendChild(checkbox);
@@ -513,6 +519,10 @@
       current.push({ text, done: false, id: Date.now() });
       setTodos(wk, dayIndex, current);
       render();
+      // Re-focus the input for rapid task entry
+      const newInput = document.querySelector(`[data-day-index="${dayIndex}"]`)
+        ?.closest('.day-section')?.querySelector('.add-form input');
+      if (newInput) newInput.focus();
     });
     section.appendChild(form);
 
@@ -520,18 +530,18 @@
   }
 
   // --- Navigation ---
-  document.getElementById('prev-week').addEventListener('click', () => {
-    weekOffset--;
-    render();
-  });
+  function navigateWeek(newOffset) {
+    const container = document.getElementById('days-container');
+    container.classList.add('fading');
+    setTimeout(() => {
+      weekOffset = newOffset;
+      initialScrollDone = false;
+      render();
+      container.classList.remove('fading');
+    }, 200);
+  }
 
-  document.getElementById('next-week').addEventListener('click', () => {
-    weekOffset++;
-    render();
-  });
-
-  document.getElementById('today-btn').addEventListener('click', () => {
-    weekOffset = 0;
-    render();
-  });
+  document.getElementById('prev-week').addEventListener('click', () => navigateWeek(weekOffset - 1));
+  document.getElementById('next-week').addEventListener('click', () => navigateWeek(weekOffset + 1));
+  document.getElementById('today-btn').addEventListener('click', () => navigateWeek(0));
 })();
