@@ -24,6 +24,7 @@
   let dragData = null;
   let allData = {};
   let initialScrollDone = false;
+  let selectedTasks = []; // Array of { wk, dayIndex, todoIndex }
 
   // --- Theme ---
   const THEME_KEY = 'weekly-todo-theme';
@@ -161,15 +162,74 @@
       date.getDate() === now.getDate();
   }
 
+  // --- Multi-select ---
+  function isSelected(wk, dayIndex, todoIndex) {
+    return selectedTasks.some(s => s.wk === wk && s.dayIndex === dayIndex && s.todoIndex === todoIndex);
+  }
+
+  function toggleSelect(wk, dayIndex, todoIndex) {
+    const idx = selectedTasks.findIndex(s => s.wk === wk && s.dayIndex === dayIndex && s.todoIndex === todoIndex);
+    if (idx >= 0) {
+      selectedTasks.splice(idx, 1);
+    } else {
+      selectedTasks.push({ wk, dayIndex, todoIndex });
+    }
+    updateSelectionUI();
+  }
+
+  function clearSelection() {
+    selectedTasks = [];
+    updateSelectionUI();
+  }
+
+  function updateSelectionUI() {
+    // Update item highlights
+    document.querySelectorAll('.todo-item').forEach(el => {
+      const wk = el.dataset.wk;
+      const dayIndex = el.dataset.dayIndex === 'misc' ? 'misc' : parseInt(el.dataset.dayIndex);
+      const todoIndex = parseInt(el.dataset.originalIdx);
+      el.classList.toggle('selected', isSelected(wk, dayIndex, todoIndex));
+    });
+
+    // Update selection bar
+    let bar = document.getElementById('selection-bar');
+    if (selectedTasks.length > 0) {
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'selection-bar';
+        bar.className = 'selection-bar';
+        document.body.appendChild(bar);
+      }
+      bar.innerHTML = `<span>${selectedTasks.length} task${selectedTasks.length > 1 ? 's' : ''} selected</span><button id="clear-selection">Clear</button>`;
+      document.getElementById('clear-selection').addEventListener('click', clearSelection);
+    } else if (bar) {
+      bar.remove();
+    }
+  }
+
+  // Clear selection on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && selectedTasks.length > 0) {
+      clearSelection();
+    }
+  });
+
   // --- Drag & Drop ---
   function handleDragStart(e, wk, dayIndex, originalIdx) {
-    dragData = { wk, dayIndex, todoIndex: originalIdx };
+    // If dragging a selected task, drag all selected; otherwise just drag this one
+    if (isSelected(wk, dayIndex, originalIdx) && selectedTasks.length > 1) {
+      dragData = { multi: true, items: [...selectedTasks] };
+      // Mark all selected items as dragging
+      document.querySelectorAll('.todo-item.selected').forEach(el => el.classList.add('dragging'));
+    } else {
+      dragData = { multi: false, wk, dayIndex, todoIndex: originalIdx };
+      e.target.classList.add('dragging');
+    }
     e.dataTransfer.effectAllowed = 'move';
-    e.target.classList.add('dragging');
   }
 
   function handleDragEnd(e) {
-    e.target.classList.remove('dragging');
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
     document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
     dragData = null;
   }
@@ -195,6 +255,45 @@
     listEl.classList.remove('drag-over');
     if (!dragData) return;
 
+    if (dragData.multi) {
+      // --- Multi-task drop ---
+      const items = dragData.items;
+
+      // Collect the actual todo objects grouped by source day, sorted by index descending for safe splicing
+      const bySource = {};
+      items.forEach(s => {
+        const key = s.wk + '|' + s.dayIndex;
+        if (!bySource[key]) bySource[key] = { wk: s.wk, dayIndex: s.dayIndex, indices: [] };
+        bySource[key].indices.push(s.todoIndex);
+      });
+
+      const movedItems = [];
+      // Remove from sources (highest index first to preserve indices)
+      Object.values(bySource).forEach(src => {
+        src.indices.sort((a, b) => b - a);
+        const srcTodos = getTodos(src.wk, src.dayIndex);
+        src.indices.forEach(idx => {
+          const item = srcTodos[idx];
+          if (item) {
+            movedItems.unshift(item); // unshift to preserve original order
+            srcTodos.splice(idx, 1);
+          }
+        });
+        setTodos(src.wk, src.dayIndex, srcTodos);
+      });
+
+      // Insert into target at the end
+      const targetTodos = getTodos(wk, targetDayIndex);
+      movedItems.forEach(item => targetTodos.push(item));
+      setTodos(wk, targetDayIndex, targetTodos);
+
+      selectedTasks = [];
+      dragData = null;
+      render();
+      return;
+    }
+
+    // --- Single-task drop (original behavior) ---
     const sameDayDrag = dragData.wk === wk && dragData.dayIndex === targetDayIndex;
 
     // Build the display-order index map from the DOM before any mutations
@@ -372,6 +471,9 @@
         initialScrollDone = true;
       }
     }
+
+    // Re-apply selection bar (selection persists across renders)
+    updateSelectionUI();
   }
 
   function buildDaySection(wk, dayIndex, label, dateStr, today) {
@@ -433,12 +535,22 @@
 
     displayOrder.forEach(({ todo, idx: originalIdx }) => {
       const li = document.createElement('li');
-      li.className = 'todo-item' + (todo.done ? ' completed' : '');
+      li.className = 'todo-item' + (todo.done ? ' completed' : '') + (isSelected(wk, dayIndex, originalIdx) ? ' selected' : '');
       li.draggable = true;
       li.dataset.originalIdx = originalIdx;
+      li.dataset.wk = wk;
+      li.dataset.dayIndex = dayIndex;
 
       li.addEventListener('dragstart', (e) => handleDragStart(e, wk, dayIndex, originalIdx));
       li.addEventListener('dragend', handleDragEnd);
+
+      // Multi-select: click the drag handle area (left side) to select
+      li.addEventListener('click', (e) => {
+        // Don't select when clicking checkbox, text, or delete button
+        if (e.target.matches('input, .todo-text, .delete-btn, [contenteditable="true"]')) return;
+        e.preventDefault();
+        toggleSelect(wk, dayIndex, originalIdx);
+      });
 
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
